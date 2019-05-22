@@ -1,0 +1,33 @@
+<ul>
+  <% @files.each do |file| %>
+    <li>
+      <a href="/<%= file %>"><%= file %></a>
+      <a href="/<%= file %>/edit">Edit</a>
+      <form class="inline" action="/<%= file %>/destroy" method="post">
+        <button type="submit">Delete File</button>
+      </form>
+      <form class="inline" action="/<%= file %>/duplicate" method="post">
+        <button type="submit">Duplicate File</button>
+      </form>
+    </li>
+  <% end %>
+</ul>
+
+<% if params['sort'] == 'descending' %>
+  <a href="/?sort=ascending">Sort ascending</a>
+<% else %>
+  <a href="/?sort=descending">Sort descending</a>
+<% end %>
+
+<br><br><a href="/new">New Document</a>
+
+<% if session[:username] %>
+  <form action="/users/signout" method="post">
+    <p class="user-status">
+      Signed in as <%= session[:username] %>
+      <button type="submit">Sign Out</button>
+    </p>
+  </form>
+<% else %>
+  <p class="user-status"><a href="/users/signin">Sign In</a></p>
+<% end %>
