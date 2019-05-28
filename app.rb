@@ -109,9 +109,9 @@ def invalid_filename_error
   erb :new
 end
 
-def invalid_extention_error
-  file_extentions = VALID_FILE_EXT.join(', ')
-  message = "Please use a valid file extention: #{file_extentions}."
+def invalid_extension_error
+  file_extensions = VALID_FILE_EXT.join(', ')
+  message = "Please use a valid file extension: #{file_extensions}."
   session[:message] = message
   status 422
   erb :new
@@ -203,7 +203,7 @@ post "/create" do
   if invalid_name?(@filename)
     invalid_filename_error
   elsif invalid_ext?(file_ext)
-    invalid_extention_error
+    invalid_extension_error
   else
     create_file(@filename, @content) unless file_exists?(@filename)
     redirect "/"
