@@ -43,10 +43,10 @@ end
 
 def credentials_path
   if ENV["RACK_ENV"] == "test"
-   File.expand_path("../test/users.yml", __FILE__)
- else
-   File.expand_path("../users.yml", __FILE__)
- end
+    File.expand_path("../test/users.yml", __FILE__)
+  else
+    File.expand_path("../users.yml", __FILE__)
+  end
 end
 
 def session
@@ -95,7 +95,7 @@ end
 def file_exists?(filename)
   files = list_of_current_files
   return unless files.include?(filename)
-  
+
   session[:message] = "#{filename} already exists."
 end
 
@@ -136,8 +136,8 @@ end
 get "/" do
   @files = list_of_current_files
   sort = params[:sort]
-  sort == 'descending' ? @files.sort! { |a, b| b <=> a} : @files.sort!
-  
+  sort == 'descending' ? @files.sort! { |a, b| b <=> a } : @files.sort!
+
   erb :index
 end
 
@@ -199,7 +199,7 @@ post "/create" do
   @filename = params[:filename].to_s
   @content = params[:content]
   file_ext = File.extname(@filename)
-  
+
   if invalid_name?(@filename)
     invalid_filename_error
   elsif invalid_ext?(file_ext)
@@ -249,10 +249,9 @@ end
 
 post "/:filename/duplicate" do
   require_signed_in_user
-  
+
   @filename = params[:filename]
   @content = File.read(file_path(@filename))
-  
+
   erb :new
 end
-
