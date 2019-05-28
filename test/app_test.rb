@@ -20,6 +20,17 @@ class AppTest < Minitest::Test
   
   def teardown
     FileUtils.rm_rf(data_path)
+    FileUtils.rm(credentials_path) if File.exist?(credentials_path)
+  end
+  
+  def create_yaml_file
+    content = {
+      "admin" => "$2a$10$XSyY62jdyxrhANvP2yWAVeDyEirtwDzCgx9Q5cAhufPhH0OYhlVXi"
+    }
+
+    File.open(credentials_path, "w") do |file|
+      file.write(content.to_yaml)
+    end
   end
   
   def create_document(name, content="")
@@ -111,6 +122,7 @@ class AppTest < Minitest::Test
     
     assert_equal 200, last_response.status
     assert_includes last_response.body, "<input"
+    assert_includes last_response.body, "<textarea"
     assert_includes last_response.body, %q(<button type="submit")
   end
   
@@ -183,7 +195,9 @@ class AppTest < Minitest::Test
     assert_includes last_response.body, %q(<button type="submit")
   end
   
-  def test_signin
+  def test_signin_success
+    create_yaml_file
+    
     post "/users/signin", {username: "admin", password: "secret"}
     assert_equal 302, last_response.status
     assert_equal "Welcome #{session[:username]}!", session[:message]
@@ -194,6 +208,8 @@ class AppTest < Minitest::Test
   end
   
   def test_signin_failure
+    create_yaml_file
+    
     post "/users/signin", {username: "admin", password: "admin"}
     
     assert_equal 422, last_response.status
@@ -213,18 +229,15 @@ class AppTest < Minitest::Test
     assert_includes last_response.body, "Sign In"
   end
   
-  def test_file_duplication
-    create_document("test.txt")
+  def test_file_duplication_form
+    create_document("test.txt", "new content")
     
-    post "/test.txt/duplicate", {}, admin_session
-    assert_equal 302, last_response.status
-    assert_equal "test(2).txt has been created.", session[:message]
-    
-    get "/"
-    assert_includes last_response.body, "test(2).txt"
+    post "/test.txt/duplicate", {filename: "test.txt"}, admin_session
+    assert_includes last_response.body, %q(value="test.txt")
+    assert_includes last_response.body, "new content"
   end
   
-   def test_file_duplication_signed_out
+  def test_file_duplication_signed_out
     create_document("test.txt")
 
     post "/test.txt/duplicate"
@@ -232,13 +245,49 @@ class AppTest < Minitest::Test
     assert_equal "You must be signed in to do that.", session[:message]
   end
   
-  def test_file_duplication_with_same_name
-    create_document("test.txt")
-    create_document("test(2).txt")
+  def test_view_signin_form
+    get "/signup"
     
-    post "/test.txt/duplicate", {}, admin_session
-    assert_equal 302, last_response.status
-    assert_equal "test(2).txt already exists.", session[:message]
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "<form"
+    assert_includes last_response.body, "<p>"
+    assert_includes last_response.body, %q(<button type="submit")
+  end
+  
+  def test_signup_invalid_username
+    create_yaml_file
+    
+    post "/signup", {username: "admin"}
+    
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "Username already exists."
+  end
+  
+  def test_signup_invalid_password_length
+    create_yaml_file
+    
+    post "/signup", {username: 'john', password: 'size'}
+    
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "Password is invalid."
+  end
+  
+  def test_signup_invalid_password_characters
+    create_yaml_file
+    
+    post "/signup", {username: 'john', password: 'paper#$'}
+    
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "Password is invalid."
+  end
+  
+  def test_signup_successful
+    create_yaml_file
+    
+    post "/signup", {username: 'john', password: 'goodpassword'}
+    
+    assert_equal last_response.status, 302
+    assert_equal "Signup success!", session[:message]
   end
 end
 

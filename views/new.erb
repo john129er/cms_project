@@ -1,7 +1,10 @@
 <form action="/create" method="post">
-  <label for="filename">Add a new document:</label><br>
+  <label for="filename">Document name:</label><br>
+  <input name="filename" id="filename" value="<%= @filename %>"/>
   <div>
-    <input name="filename" id="filename" value="<%= params[:filename] %>"/>
-    <button type="submit">Create</button>
+    <label for="content">Document contents:</label><br>
+    <textarea name="content" id="content" rows="20" cols="100"><%= @content %></textarea>
   </div>
+  <button type="submit">Create</button>
+  <a href="/">Cancel</a>
 </form>

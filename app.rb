@@ -26,6 +26,7 @@ def render_markdown(text)
   markdown.render(text)
 end
 
+# HARD CODED FILE EXT, CAN WE CHANGE THIS?
 def load_file_content(path)
   content = File.read(path)
   case File.extname(path)
@@ -38,12 +39,15 @@ def load_file_content(path)
 end
 
 def load_user_credentials
-  credentials_path = if ENV["RACK_ENV"] == "test"
-                       File.expand_path("../test/users.yml", __FILE__)
-                     else
-                       File.expand_path("../users.yml", __FILE__)
-                     end
   YAML.load_file(credentials_path)
+end
+
+def credentials_path
+  if ENV["RACK_ENV"] == "test"
+   File.expand_path("../test/users.yml", __FILE__)
+ else
+   File.expand_path("../users.yml", __FILE__)
+ end
 end
 
 def session
@@ -72,11 +76,8 @@ def valid_credentials?(username, password)
 end
 
 def create_file(filename, content="")
-  file_path = File.join(data_path, filename)
-
-  File.write(file_path, content)
+  File.write(file_path(filename), content)
   session[:message] = "#{filename} has been created."
-  redirect "/"
 end
 
 def invalid_name?(filename)
@@ -97,11 +98,40 @@ def file_exists?(filename)
   return unless files.include?(filename)
   
   session[:message] = "#{filename} already exists."
-  redirect "/"
 end
 
-def increment_file_number(basename)
-  basename.sub(/(?<=\()\d+(?=\)\z)/) { |val| val.to_i + 1 }
+def file_path(file_name)
+  File.join(data_path, file_name)
+end
+
+def invalid_filename_error
+  session[:message] = "A name is required."
+  status 422
+  erb :new
+end
+
+def invalid_extention_error
+  file_extentions = VALID_FILE_EXT.join(', ')
+  message = "Please use a valid file extention: #{file_extentions}."
+  session[:message] = message
+  status 422
+  erb :new
+end
+
+def invalid_username?(username)
+  credentials = load_user_credentials
+  credentials.key?(username)
+end
+
+def invalid_password?(password)
+  !(password.size >= 5 && password.match?(/\A\w{5,}\z/))
+end
+
+def store_credentials(username, password)
+  credentials = load_user_credentials
+  hashed_password = BCrypt::Password.create(password).to_s
+  credentials[username] = hashed_password
+  File.write(credentials_path, credentials.to_yaml)
 end
 
 get "/" do
@@ -142,11 +172,13 @@ get "/new" do
   erb :new
 end
 
-get "/:filename" do
-  file_path = File.join(data_path, params[:filename])
+get "/signup" do
+  erb :signup
+end
 
-  if File.file?(file_path)
-    load_file_content(file_path)
+get "/:filename" do
+  if File.file?(file_path(params[:filename]))
+    load_file_content(file_path(params[:filename]))
   else
     session[:message] = "#{params[:filename]} does not exist."
     redirect "/"
@@ -156,10 +188,8 @@ end
 get "/:filename/edit" do
   require_signed_in_user
 
-  file_path = File.join(data_path, params[:filename])
-
   @filename = params[:filename]
-  @content = File.read(file_path)
+  @content = File.read(file_path(params[:filename]))
 
   erb :edit_doc
 end
@@ -167,30 +197,43 @@ end
 post "/create" do
   require_signed_in_user
 
-  filename = params[:filename].to_s
-  file_ext = File.extname(filename)
-
-  if invalid_name?(filename)
-    session[:message] = "A name is required."
-    status 422
-    erb :new
+  @filename = params[:filename].to_s
+  @content = params[:content]
+  file_ext = File.extname(@filename)
+  
+  if invalid_name?(@filename)
+    invalid_filename_error
   elsif invalid_ext?(file_ext)
-    file_extentions = VALID_FILE_EXT.join(', ')
-    message = "Please use a valid file extention: #{file_extentions}."
-    session[:message] = message
-    status 422
-    erb :new
+    invalid_extention_error
   else
-    create_file(filename) unless file_exists?(filename)
+    create_file(@filename, @content) unless file_exists?(@filename)
+    redirect "/"
+  end
+end
+
+post "/signup" do
+  @username = params[:username]
+  password = params[:password]
+
+  if invalid_username?(@username)
+    session[:message] = "Username already exists."
+    status 422
+    erb :signup
+  elsif invalid_password?(password)
+    session[:message] = "Password is invalid."
+    status 422
+    erb :signup
+  else
+    store_credentials(@username, password)
+    session[:message] = "Signup success!"
+    redirect "/users/signin"
   end
 end
 
 post "/:filename" do
   require_signed_in_user
 
-  file_path = File.join(data_path, params[:filename])
-
-  File.write(file_path, params[:content])
+  File.write(file_path(params[:filename]), params[:content])
 
   session[:message] = "#{params[:filename]} has been updated."
   redirect "/"
@@ -199,9 +242,7 @@ end
 post "/:filename/destroy" do
   require_signed_in_user
 
-  file_path = File.join(data_path, params[:filename])
-
-  File.delete(file_path)
+  File.delete(file_path(params[:filename]))
 
   session[:message] = "#{params[:filename]} has been deleted."
   redirect "/"
@@ -209,41 +250,10 @@ end
 
 post "/:filename/duplicate" do
   require_signed_in_user
-
-  file_path = File.join(data_path, params[:filename])
-  file_ext = File.extname(params[:filename])
-  contents = File.read(file_path)
-  basename = File.basename(params[:filename], ".*")
-
-  new_filename = if basename.match?(/\(\d+\)\z/)
-                   "#{increment_file_number(basename)}#{file_ext}"
-                 else
-                   "#{basename}(2)#{file_ext}"
-                 end
-
-  create_file(new_filename, contents) unless file_exists?(new_filename)
+  
+  @filename = params[:filename]
+  @content = File.read(file_path(@filename))
+  
+  erb :new
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
