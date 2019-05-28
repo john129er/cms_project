@@ -157,7 +157,7 @@ class AppTest < Minitest::Test
   def test_create_new_document_bad_file_ext
     post "/create", {filename: "test"}, admin_session
     assert_equal 422, last_response.status
-    assert_includes last_response.body, "Please use a valid file extention:"
+    assert_includes last_response.body, "Please use a valid file extension:"
   end
   
   def test_create_new_document_with_same_name
