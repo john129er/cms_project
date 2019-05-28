@@ -26,7 +26,6 @@ def render_markdown(text)
   markdown.render(text)
 end
 
-# HARD CODED FILE EXT, CAN WE CHANGE THIS?
 def load_file_content(path)
   content = File.read(path)
   case File.extname(path)
